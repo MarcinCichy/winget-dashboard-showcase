@@ -1,441 +1,429 @@
-# Winget Dashboard - Centralne Zarządzanie Oprogramowaniem
+# Winget Dashboard
 
-![Główny interfejs aplikacji](screenshots/main.png "Main interface")
+Centralne zarzadzanie oprogramowaniem na komputerach Windows z uzyciem `winget` i `chocolatey`.
 
-### Spis Treści (PL)
-* [Opis](#opis)
-* [Główne Funkcje](#główne-funkcje)
-* [Architektura](#architektura)
-* [Struktura Projektu](#struktura-projektu)
-* [Zrzuty Ekranu](#zrzuty-ekranu)
-* [Instalacja i Konfiguracja](#instalacja-i-konfiguracja)
-    * [Krok 1: Wymagania](#krok-1-wymagania)
-    * [Krok 2: Konfiguracja Serwera](#krok-2-konfiguracja-serwera)
-    * [Krok 3: Budowanie Pakietu Agenta (Lokalnie)](#krok-3-budowanie-pakietu-agenta-lokalnie)
-    * [Krok 4: Wgranie Pakietu `.zip` na Serwer](#krok-4-wgranie-pakietu-zip-na-serwer)
-    * [Krok 5: Stworzenie Instalatora `setup.exe`](#krok-5-stworzenie-instalatora-setupexe)
-    * [Krok 6: Wdrożenie na Komputerach Klienckich](#krok-6-wdrożenie-na-komputerach-klienckich)
-* [Stos Technologiczny](#stos-technologiczny)
+## Spis tresci
 
----
-
-### Contents (EN)
-* [English Version](#english-version)
-    * [Description](#description)
-    * [Key Features](#key-features)
-    * [Architecture](#architecture-1)
-    * [Project Structure](#project-structure)
-    * [Screenshots](#screenshots)
-    * [Installation and Setup](#installation-and-setup)
-        * [Step 1: Prerequisites](#step-1-prerequisites)
-        * [Step 2: Server Setup](#step-2-server-setup)
-        * [Step 3: Building the Agent Package (Locally)](#step-3-building-the-agent-package-locally)
-        * [Step 4: Uploading the `.zip` Package to the Server](#step-4-uploading-the-zip-package-to-the-server)
-        * [Step 5: Creating the `setup.exe` Installer](#step-5-creating-the-setupexe-installer)
-        * [Step 6: Deploying to Client Machines](#step-6-deploying-to-client-machines)
-    * [Technology Stack](#technology-stack)
-
----
-
-## (PL)
+- [Opis](#opis)
+- [Najwazniejsze funkcje](#najwazniejsze-funkcje)
+- [Architektura](#architektura)
+- [Struktura projektu](#struktura-projektu)
+- [Zrzuty ekranu](#zrzuty-ekranu)
+- [Uruchomienie serwera](#uruchomienie-serwera)
+- [Budowa pakietu agenta](#budowa-pakietu-agenta)
+- [Instalator Inno Setup](#instalator-inno-setup)
+- [Testy](#testy)
+- [Technology Stack](#technology-stack)
+- [English Version](#english-version)
 
 ## Opis
 
-**Winget Dashboard** to aplikacja webowa oparta na frameworku Flask, przeznaczona do zdalnego monitorowania i zarządzania oprogramowaniem na komputerach z systemem Windows przy użyciu menedżerów pakietów `winget` oraz `chocolatey`. Projekt został stworzony z myślą o małych i średnich zespołach IT, które potrzebują prostego, scentralizowanego narzędzia do automatyzacji aktualizacji, deinstalacji i raportowania stanu stacji roboczych.
+`Winget Dashboard` to aplikacja Flask do monitorowania komputerow, raportowania stanu aplikacji i aktualizacji oraz zdalnego zlecania akcji takich jak update, uninstall, refresh raportu, logi czy aktualizacja agenta.
 
-## Główne Funkcje
+Projekt sklada sie z:
+- serwera Flask w `winget_dashboard/`
+- komponentow agenta Windows w `builder_helper/agent_src/`
+- narzedzi do budowy i dystrybucji pakietu agenta
 
-### 🛡️ Niezawodność i Bezpieczeństwo
-* **Health Check & Automatic Rollback:** Agent po każdej własnej aktualizacji przeprowadza autotest ("health check"). Jeśli nowa wersja jest wadliwa, system **automatycznie przywróci poprzednią, stabilną wersję agenta**.
-* **Inteligentne Zarządzanie Zadaniami:** Serwer automatycznie wykrywa i zamyka przestarzałe lub "zawieszone" zadania aktualizacji (np. gdy aplikacja została już zaktualizowana ręcznie).
-* **Per-Agent API Keys:** Każdy agent posiada własny, unikalny klucz API zamiast jednego wspólnego. Kompromitacja jednego klucza nie naraża całej infrastruktury.
-* **Solidna Usługa Windows:** Główny agent działa jako stabilna usługa systemowa (konto `SYSTEM`), odporna na wylogowanie użytkownika.
-* **Lokalne Budowanie Agenta:** Ze względów bezpieczeństwa, serwer nie kompiluje kodu agenta. Zamiast tego, udostępnia `builder_helper.exe`, który administrator uruchamia na własnej maszynie, aby lokalnie zbudować i spersonalizować pakiet agenta.
+## Najwazniejsze funkcje
 
-### ⚙️ Zdalne Zarządzanie i Automatyzacja
-* **Centralny Panel:** Przegląd wszystkich podłączonych komputerów wraz z ich kluczowymi statusami (online/offline, wymagany restart, wersja agenta, liczba dostępnych aktualizacji).
-* **Dwa tryby widoku:** Przełączanie między widokiem kafelków a widokiem tabeli z sortowaniem po dowolnej kolumnie. Preferencja zapamiętywana w przeglądarce.
-* **Zdalne Akcje:** Możliwość zdalnego zlecania zadań:
-    * **Aktualizacja:** pojedynczych aplikacji lub całego systemu operacyjnego.
-    * **Deinstalacja:** dowolnej aplikacji wykrytej przez `winget` lub `chocolatey`.
-    * **Aktualizacja Zbiorcza:** Zlecenie wszystkich dostępnych aktualizacji (aplikacji i systemu) jednym kliknięciem.
-    * **Bulk Update OS:** Jednoczesna aktualizacja systemu operacyjnego na wszystkich komputerach z poziomu strony głównej.
-* **Tryb "Poproś" vs "Wymuś":** Zadania mogą być wykonywane w trybie interaktywnym (z prośbą o zgodę użytkownika na pulpicie) lub w pełni cichym (wymuszonym).
-* **Automatyczna Aktualizacja Agenta:** Możliwość zdalnego wdrożenia nowej wersji agenta na wszystkich podłączonych komputerach za pomocą jednego kliknięcia.
-* **Zaplanowane Zadania:** Definiowanie zadań cyklicznych (np. cotygodniowa aktualizacja wszystkich aplikacji) z harmonogramem CRON. Zadania wykonywane są automatycznie bez interwencji administratora.
-
-### 👥 Grupy i Organizacja
-* **Grupy Komputerów:** Organizowanie komputerów w logiczne grupy (np. "Biuro", "Serwery", "Dział IT"). Możliwość wykonywania akcji zbiorczych na całej grupie.
-* **Niestandardowe Nazwy:** Każdemu komputerowi można nadać własną, przyjazną nazwę wyświetlaną (niezależną od nazwy hosta Windows).
-* **Zarządzanie Użytkownikami:** System kont z różnymi poziomami dostępu.
-
-### 📊 Diagnostyka i Raportowanie
-* **Szczegółowy Widok Komputera:** Dostęp do listy zainstalowanych aplikacji, dostępnych aktualizacji oraz oczekujących aktualizacji systemu Windows.
-* **Czarna Lista (Blacklist):** Możliwość zdefiniowania globalnej lub indywidualnej dla komputera listy słów kluczowych (np. "redistributable", "visual c++"), aby ignorować określone aplikacje.
-* **Historia Raportów:** Dostęp do historycznych raportów dla każdej maszyny z możliwością filtrowania.
-* **Tooltips zadań:** Najeżdżając na badge z liczbą zadań widać ich listę bez otwierania widoku szczegółowego.
-* **Zdalna Diagnostyka Agenta:** Dostępne z panelu komputera:
-    * **Pokaż Logi:** Pobiera i wyświetla aktualne pliki `agent.log`, `ui_helper.log` i `updater.log` z klienta.
-    * **Wyczyść Logi:** Zleca zdalne usunięcie plików logów na kliencie.
-    * **Napraw Winget:** Zleca wykonanie polecenia `winget source reset --force` na kliencie.
-* **Diagnostyka Serwera:** Możliwość podglądu i czyszczenia pliku `dashboard.log` serwera bezpośrednio z panelu Ustawień.
-* **Powiadomienia Email:** Opcjonalne powiadomienia e-mail o zdarzeniach (np. komputer offline, nowe aktualizacje).
+- centralny dashboard komputerow
+- zdalne akcje dla aplikacji i systemu
+- grupy komputerow i uprawnienia uzytkownikow
+- scheduled tasks
+- raporty i historia raportow
+- logi agenta i logi serwera
+- per-agent API keys
+- zdalna aktualizacja agenta
 
 ## Architektura
 
-System składa się z centralnego serwera oraz czterech komponentów klienckich, które zapewniają jego niezawodne działanie.
+Po stronie serwera projekt jest zorganizowany warstwowo:
+- `api/` i `views.py` obsluguja HTTP
+- `services/` zawiera logike biznesowa
+- `repositories/` odpowiadaja za dostep do danych
+- `db.py` zawiera `DatabaseManager`, `DatabaseContext` i inicjalizacje bazy
 
-1.  **Serwer (Flask):** Sercem aplikacji jest serwer napisany w Pythonie (Flask + Waitress). Odpowiada za udostępnianie panelu webowego, API do komunikacji z agentami oraz zarządzanie bazą danych (SQLite). Warstwa dostępu do danych opiera się na wzorcu **Repository** z fasadami, co zapewnia czytelny podział odpowiedzialności.
-2.  **Agent (agent.exe):** Główny program działający jako usługa systemowa Windows (`Windows Service`, konto `SYSTEM`) na komputerach klienckich. Jego zadania to cykliczne raportowanie, pobieranie i koordynowanie zadań oraz uruchamianie Pomocnika UI. Logika komend zrealizowana jest wzorcem **Command Pattern**.
-3.  **Pomocnik UI (ui_helper.exe):** Lekki program pośredniczący, uruchamiany automatycznie (przez agenta, przez Harmonogram Zadań z flagą `/ru "NT AUTHORITY\INTERACTIVE"`) w kontekście **zalogowanego użytkownika**. Jest niezbędny, aby ominąć tzw. "Session 0 Isolation", co pozwala agentowi (działającemu jako `SYSTEM`) na uruchamianie poleceń `winget`/`chocolatey` (wymagających kontekstu użytkownika) i wyświetlanie okien dialogowych na pulpicie użytkownika.
-4.  **Updater (updater.exe):** Specjalistyczne narzędzie odpowiedzialne za proces autoaktualizacji agenta. Implementuje logikę tworzenia kopii zapasowych, podmiany plików oraz automatycznego rollbacku w razie awarii.
-5.  **Pomocnik Budowania (builder_helper.exe):** Program `.exe` uruchamiany przez administratora na jego stacji roboczej (Windows). Nasłuchuje na `localhost:61950` i na żądanie z panelu webowego kompiluje kod źródłowy Pythona przy użyciu lokalnie zainstalowanego PyInstallera. Wynikiem jest spersonalizowany pakiet `.zip` zawierający gotowe pliki `agent.exe`, `ui_helper.exe` i `updater.exe`.
+Bootstrap aplikacji zostal rozbity do:
+- `winget_dashboard/app_setup/auth_setup.py`
+- `winget_dashboard/app_setup/blueprints.py`
+- `winget_dashboard/app_setup/errors.py`
+- `winget_dashboard/app_setup/http_setup.py`
+- `winget_dashboard/app_setup/infra_setup.py`
+- `winget_dashboard/app_setup/logging_setup.py`
+- `winget_dashboard/app_setup/templates.py`
 
-## Struktura Projektu
+Dodatkowo `winget_dashboard/dependencies.py` odpowiada za per-request tworzenie i cache zaleznosci serwisow.
 
-```plaintext
+## Struktura projektu
+
+```text
 winget_agent_new/
-├── agent_builds/               # Katalog na serwerze do przechowywania pakietów .zip
-│
-├── builder_helper/             # Kod źródłowy builder_helper.exe
-│   └── agent_src/              # Kod źródłowy agenta (commands/, orchestrator.py, ...)
-│
-├── setup/                      # Katalog używany na maszynie admina do budowy instalatora
-│   ├── SourceFiles/            # Pliki źródłowe dla Inno Setup (.exe)
-│   ├── Output/                 # Gotowy instalator (.exe)
-│   └── setup_script.iss        # Skrypt Inno Setup
-│
-├── winget_dashboard/           # Główny pakiet aplikacji serwera Flask
-│   ├── api/                    # Endpointy API (/api/*)
-│   ├── repositories/           # Warstwa dostępu do danych (wzorzec Repository)
-│   │   ├── computer.py         # Fasada dla operacji na komputerach
-│   │   ├── computer_basic.py   # Podstawowe operacje CRUD
-│   │   ├── computer_queries.py # Zapytania i filtrowanie
-│   │   ├── computer_groups.py  # Operacje na grupach komputerów
-│   │   ├── task.py             # Zarządzanie zadaniami
-│   │   ├── group.py            # Zarządzanie grupami
-│   │   ├── scheduled_task.py   # Zaplanowane zadania
-│   │   └── ...                 # Pozostałe repozytoria
-│   ├── services/               # Logika biznesowa serwera
-│   ├── static/                 # Pliki statyczne (CSS, JS)
-│   ├── templates/              # Szablony HTML (Jinja2)
-│   ├── help/                   # Pliki dokumentacji pomocy
-│   ├── config.py               # Konfiguracja aplikacji
-│   ├── db.py                   # Inicjalizacja bazy danych
-│   └── schema.sql              # Schemat bazy danych SQLite
-│
-├── tests/                      # Testy automatyczne
-│   ├── repositories/           # Testy jednostkowe warstwy danych
-│   ├── api/                    # Testy API
-│   ├── services/               # Testy serwisów
-│   └── e2e/                    # Testy end-to-end (Selenium)
-│
-├── screenshots/                # Zrzuty ekranu do dokumentacji
-├── requirements.txt            # Zależności Pythona dla serwera
-├── requirements-windows.txt    # Zależności do budowania .exe
-├── run.py                      # Skrypt uruchamiający serwer
-└── .env                        # Konfiguracja serwera (klucze API itp.)
+|-- agent_builds/                 # Paczki .zip agenta przechowywane po stronie serwera
+|-- builder_helper/
+|   |-- agent_src/                # Zrodla agenta Windows
+|   |-- builder_helper.py         # Lokalny helper do budowy pakietu agenta
+|   |-- error_definitions.json
+|   `-- dist/                     # Wyniki lokalnego buildu helpera
+|-- help/                         # Dokumentacja pomocy
+|-- instance/                     # Runtime data, baza SQLite, logi
+|-- Output/                       # Wyniki instalatora Inno Setup
+|-- SourceFiles/                  # Wejscie do instalatora Inno Setup
+|-- scripts/                      # Skrypty pomocnicze
+|-- screenshots/                  # Zrzuty ekranu
+|-- tests/                        # Testy
+|-- winget_dashboard/
+|   |-- api/                      # Endpointy API
+|   |-- app_setup/                # Rozbity bootstrap aplikacji Flask
+|   |-- repositories/             # Warstwa dostepu do danych
+|   |-- services/                 # Logika biznesowa
+|   |-- static/                   # CSS / JS / assets
+|   |-- templates/                # Szablony Jinja2
+|   |-- config.py
+|   |-- db.py
+|   |-- dependencies.py
+|   |-- scheduler.py
+|   |-- schema.sql
+|   `-- views.py
+|-- .env.example
+|-- docker-compose.yml
+|-- Dockerfile
+|-- requirements.txt
+|-- requirements-windows.txt
+|-- run.py
+|-- setup_script.iss
+`-- README.md
 ```
 
-## Zrzuty Ekranu
+## Zrzuty ekranu
 
 | Widok | Opis |
-|-------|------|
-| ![Strona główna — kafelki](screenshots/main.png) | Strona główna — widok kafelków z sortowaniem |
-| ![Strona główna — lista](screenshots/list.png) | Strona główna — widok tabeli z sortowaniem kolumn |
-| ![Szczegóły komputera](screenshots/computer.png) | Szczegółowy widok komputera |
+|------|------|
+| ![Strona glowna - kafelki](screenshots/main.png) | Strona glowna - widok kafelkow |
+| ![Strona glowna - lista](screenshots/list.png) | Strona glowna - widok tabeli |
+| ![Szczegoly komputera](screenshots/computer.png) | Szczegolowy widok komputera |
 | ![Ustawienia komputera](screenshots/computer_settings.png) | Ustawienia i konfiguracja komputera |
-| ![Grupy](screenshots/groups.png) | Zarządzanie grupami komputerów |
-| ![Zaplanowane zadania](screenshots/scheduler.png) | Harmonogram zadań cyklicznych |
-| ![Historia raportów](screenshots/history.png) | Historia raportów |
+| ![Grupy](screenshots/groups.png) | Zarzadzanie grupami komputerow |
+| ![Zaplanowane zadania](screenshots/scheduler.png) | Widok scheduled tasks |
+| ![Historia raportow](screenshots/history.png) | Historia raportow |
 | ![Ustawienia](screenshots/settings.png) | Ustawienia serwera |
-| ![Użytkownicy](screenshots/users.png) | Zarządzanie użytkownikami |
+| ![Uzytkownicy](screenshots/users.png) | Zarzadzanie uzytkownikami |
 | ![Pomoc](screenshots/help.png) | Wbudowana dokumentacja pomocy |
 
-## Instalacja i Konfiguracja
+## Uruchomienie serwera
 
-Proces instalacji składa się z konfiguracji serwera, jednorazowego zbudowania komponentów klienckich za pomocą `builder_helper.exe`, a następnie stworzenia instalatora `setup.exe` do masowej dystrybucji.
+### Wymagania
 
-### Krok 1: Wymagania
+- Python 3.8+
+- Git
 
-* **Serwer (Linux/Windows):**
-    * Python 3.8+
-    * Git
-* **Maszyna Administratora (Windows):**
-    * Python 3.8+
-    * Git
-    * Zainstalowane pakiety Pythona: `pip install pyinstaller pywin32 requests` (najlepiej w dedykowanym venv)
-    * **Inno Setup 6:** Niezbędne do skompilowania skryptu `setup_script.iss` w finalny instalator `.exe`. Pobierz z [jrsoftware.org](https://jrsoftware.org/isinfo.php).
+### Instalacja
 
-### Krok 2: Konfiguracja Serwera
+```bash
+git clone <adres-repozytorium>
+cd winget_agent_new
+python -m venv venv
+```
 
-1.  **Klonuj repozytorium** na serwerze.
-    ```bash
-    git clone <adres-repozytorium>
-    cd winget_agent_new
-    ```
-2.  **Utwórz i aktywuj wirtualne środowisko**
-    ```bash
-    python -m venv venv
-    # Windows: .\venv\Scripts\activate | Linux: source venv/bin/activate
-    ```
-3.  **Zainstaluj zależności**
-    ```bash
-    pip install -r requirements.txt
-    ```
-4.  **Utwórz plik `.env`** w głównym folderze i uzupełnij go:
-    ```ini
-    SECRET_KEY=twoj_super_tajny_klucz_sesji
-    API_KEY=twoj_super_tajny_klucz_api_dla_agentow
-    RATELIMIT_ENABLED=true
-    NOTIFICATIONS_ENABLED=false
-    ```
-5.  **Zainicjuj bazę danych** (tylko raz):
-    ```bash
-    flask --app run init-db
-    ```
-6.  **Uruchom serwer produkcyjny:**
-    ```bash
-    waitress-serve --host=0.0.0.0 --port=5000 winget_dashboard:create_app
-    ```
+Aktywacja virtualenv:
 
-### Krok 3: Budowanie Pakietu Agenta (Lokalnie)
+```bash
+# Windows
+venv\Scripts\activate
 
-Ten krok wykonujesz **na swojej stacji roboczej administratora** (nie na serwerze).
+# Linux/macOS
+source venv/bin/activate
+```
 
-1.  **Klonuj repozytorium** na swoją stację roboczą.
-2.  **Zbuduj `builder_helper.exe`:**
-    ```bash
-    python -m venv venv-build
-    .\venv-build\Scripts\activate
-    pip install -r requirements-windows.txt
-    pyinstaller --onefile --name builder_helper builder_helper.py
-    ```
-3.  Gotowy plik `builder_helper.exe` znajdziesz w folderze `dist/`. **Uruchom go.**
-    * Nasłuchuje na `http://127.0.0.1:61950`. Nie zamykaj tego okna.
-4.  **Użyj Generatora w Panelu Web:**
-    * Otwórz panel Winget Dashboard **w przeglądarce na tej samej maszynie**, na której uruchomiłeś `builder_helper.exe`.
-    * Przejdź do `Ustawienia` → "Generator Agenta".
-    * Podaj wersję, adres serwera i klucz API, kliknij "Generuj Pakiet".
-    * Po zakończeniu pobierz spersonalizowany pakiet `.zip`.
+Instalacja zaleznosci:
 
-### Krok 4: Wgranie Pakietu `.zip` na Serwer
+```bash
+pip install -r requirements.txt
+```
 
-1.  W panelu webowym, w `Ustawienia`, przejdź do sekcji "Wgraj Nowy Pakiet Agenta".
-2.  Wskaż pobrany plik `.zip` i kliknij "Wgraj i ustaw nową wersję".
-3.  Serwer zapisze plik i oznaczy go jako `_latest`. Ta wersja będzie używana do zdalnych aktualizacji.
+Utworzenie konfiguracji:
 
-### Krok 5: Stworzenie Instalatora `setup.exe`
+```bash
+# Windows
+copy .env.example .env
 
-1.  Rozpakuj pobrany `.zip` i skopiuj `agent.exe`, `ui_helper.exe`, `updater.exe` do folderu `setup/SourceFiles/`.
-2.  Otwórz `setup/setup_script.iss` w **Inno Setup 6**.
-3.  Zaktualizuj numer wersji na górze skryptu i skompiluj (F9).
-4.  Gotowy instalator znajdziesz w `setup/Output/`.
+# Linux/macOS
+cp .env.example .env
+```
 
-### Krok 6: Wdrożenie na Komputerach Klienckich
+Minimalne wpisy w `.env`:
 
-1.  Wdróż `setup.exe` na komputerach klienckich i uruchom **jako administrator**.
-    * Obsługuje cichą instalację: `/VERYSILENT /SUPPRESSMSGBOXES`
-2.  Instalator automatycznie wyczyści stare wersje, zainstaluje nową usługę i ją uruchomi.
-3.  Komputer po chwili pojawi się w panelu Winget Dashboard.
+```ini
+SECRET_KEY=<twoj_klucz_sesji>
+API_KEY=<twoj_klucz_api>
+RATELIMIT_ENABLED=true
+NOTIFICATIONS_ENABLED=false
+```
 
-## Stos Technologiczny
+Inicjalizacja bazy:
 
-* **Backend:** Python 3, Flask, Waitress, SQLite
-* **Frontend:** HTML5, CSS3, JavaScript (vanilla)
-* **Agent:** Python 3, pywin32, requests
-* **Menedżery pakietów:** winget, chocolatey
-* **Narzędzia Budowania:** PyInstaller, Inno Setup 6
-* **Testy:** pytest, Selenium (E2E)
+```bash
+flask --app run init-db
+```
 
----
+Uruchomienie developerskie:
+
+```bash
+python run.py
+```
+
+Uruchomienie produkcyjne:
+
+```bash
+waitress-serve --host=0.0.0.0 --port=5000 winget_dashboard:create_app
+```
+
+## Budowa pakietu agenta
+
+Budowa wykonywana jest lokalnie na stacji administratora Windows.
+
+Instalacja zaleznosci:
+
+```bash
+pip install -r requirements-windows.txt
+```
+
+Budowa `builder_helper.exe`:
+
+```bash
+pyinstaller --onefile --name builder_helper builder_helper/builder_helper.py
+```
+
+Po uruchomieniu `builder_helper.exe` generator w panelu WWW moze przygotowac spersonalizowany pakiet `.zip` agenta.
+
+## Instalator Inno Setup
+
+Repo korzysta obecnie z plikow w root:
+- `SourceFiles/`
+- `Output/`
+- `setup_script.iss`
+
+Typowy przeplyw:
+1. skopiuj `agent.exe`, `ui_helper.exe`, `updater.exe` do `SourceFiles/`
+2. otworz `setup_script.iss` w Inno Setup
+3. zaktualizuj numer wersji i skompiluj instalator
+4. wynik pojawi sie w `Output/`
+
+## Testy
+
+Uruchomienie wszystkich testow:
+
+```bash
+pytest
+```
+
+Coverage:
+
+```bash
+pytest --cov=winget_dashboard --cov-report=html
+```
+
+Uwaga: pelne `pytest` moze obecnie dawac niestabilny sygnal w tym repo z powodu problemow srodowiska z katalogami tymczasowymi `pytest_runtime_tmp`.
+
+## Technology Stack
+
+- Backend: Python, Flask, Waitress, SQLite
+- Frontend: HTML, CSS, JavaScript
+- Agent: Python, pywin32, requests
+- Package managers: winget, chocolatey
+- Build tools: PyInstaller, Inno Setup
+- Tests: pytest, Selenium
 
 ## English Version
 
 ### Description
 
-**Winget Dashboard** is a Flask-based web application for remotely monitoring and managing software on Windows computers using the `winget` and `chocolatey` package managers. The project is designed for small to medium-sized IT teams who need a simple, centralized tool to automate updates, uninstalls, and reporting for their workstations.
+`Winget Dashboard` is a Flask-based application for monitoring Windows computers, reporting installed software and pending updates, and triggering remote actions such as update, uninstall, report refresh, log collection, and agent self-update.
+
+The project consists of:
+- a Flask server in `winget_dashboard/`
+- Windows agent components in `builder_helper/agent_src/`
+- helper tooling for building and distributing the agent package
 
 ### Key Features
 
-#### 🛡️ Reliability and Security
-* **Health Check & Automatic Rollback:** After every self-update, the agent performs a health check. If the new version is faulty, the system **automatically rolls back to the previous, stable version**.
-* **Intelligent Task Management:** The server automatically detects and closes obsolete or "stuck" update tasks.
-* **Per-Agent API Keys:** Each agent has its own unique API key. Compromising one key does not expose the entire infrastructure.
-* **Robust Windows Service:** The main agent runs as a stable Windows service (`SYSTEM` account), resilient to user logouts.
-* **Local Agent Building:** For security reasons, the server does not compile agent code. The administrator runs `builder_helper.exe` on their own machine to locally build and personalize the agent package.
-
-#### ⚙️ Remote Management and Automation
-* **Central Dashboard:** An overview of all connected computers with their key statuses (online/offline, reboot required, agent version, available update count).
-* **Two View Modes:** Toggle between tile view and table view with column sorting. Preference is stored in the browser.
-* **Remote Actions:**
-    * **Update:** single applications or the entire OS.
-    * **Uninstall:** any application detected by `winget` or `chocolatey`.
-    * **Update All:** queue all pending application and OS updates with one click.
-    * **Bulk OS Update:** trigger OS updates on all computers simultaneously from the main page.
-* **"Request" vs. "Force" Mode:** Tasks can be executed interactively (with a user consent dialog) or completely silently.
-* **Agent Self-Update:** Remotely deploy a new agent version to all connected machines with one click.
-* **Scheduled Tasks:** Define recurring tasks (e.g., weekly update of all applications) with a CRON schedule. Tasks execute automatically without administrator intervention.
-
-#### 👥 Groups and Organization
-* **Computer Groups:** Organize computers into logical groups (e.g., "Office", "Servers", "IT Dept"). Perform bulk actions on entire groups.
-* **Custom Display Names:** Assign a friendly display name to each computer, independent of the Windows hostname.
-* **User Management:** Multi-account system with different access levels.
-
-#### 📊 Diagnostics and Reporting
-* **Detailed Computer View:** List of installed applications, available software updates, and pending Windows Updates.
-* **Blacklist:** Define a global or per-computer list of keywords (e.g., "redistributable", "visual c++") to ignore specific applications.
-* **Report History:** Access historical reports for each machine with filtering.
-* **Task Tooltips:** Hovering over the task count badge shows the task list without opening the detail view.
-* **Remote Agent Diagnostics:** Available from the computer detail panel:
-    * **Show Logs:** Fetches and displays `agent.log`, `ui_helper.log`, and `updater.log` from the client.
-    * **Clear Logs:** Triggers remote deletion of log files on the client.
-    * **Repair Winget:** Triggers `winget source reset --force` on the client.
-* **Server Diagnostics:** View and clear the server's `dashboard.log` directly from the Settings panel.
-* **Email Notifications:** Optional email notifications for events (e.g., computer offline, new updates available).
+- central dashboard for managed computers
+- remote software and OS actions
+- computer groups and user access control
+- scheduled tasks
+- reports and report history
+- agent and server logs
+- per-agent API keys
+- remote agent update flow
 
 ### Architecture
 
-1.  **Server (Flask):** The core is a Python server (Flask + Waitress). It serves the web panel, provides an API for agents, and manages the SQLite database. The data access layer uses the **Repository Pattern** with facades for clean separation of concerns.
-2.  **Agent (agent.exe):** The main program running as a Windows Service (`SYSTEM` account) on client machines. Periodic reporting, task coordination, and UI Helper launching. Command logic is implemented using the **Command Pattern**.
-3.  **UI Helper (ui_helper.exe):** A lightweight intermediary, launched automatically in the **logged-in user's context** via Task Scheduler (`/ru "NT AUTHORITY\INTERACTIVE"`). Essential for bypassing "Session 0 Isolation" to run `winget`/`chocolatey` commands and display desktop dialogs.
-4.  **Updater (updater.exe):** Handles the agent's self-update process — backup creation, file replacement, and automatic rollback on failure.
-5.  **Build Helper (builder_helper.exe):** An `.exe` run by the administrator on their Windows workstation. Listens on `localhost:61950` and compiles agent source code via PyInstaller on demand, producing a personalized `.zip` package.
+On the server side, the project is organized in layers:
+- `api/` and `views.py` handle HTTP
+- `services/` contains business logic
+- `repositories/` handle data access
+- `db.py` contains `DatabaseManager`, `DatabaseContext`, and DB initialization
+
+Flask bootstrap is split into:
+- `winget_dashboard/app_setup/auth_setup.py`
+- `winget_dashboard/app_setup/blueprints.py`
+- `winget_dashboard/app_setup/errors.py`
+- `winget_dashboard/app_setup/http_setup.py`
+- `winget_dashboard/app_setup/infra_setup.py`
+- `winget_dashboard/app_setup/logging_setup.py`
+- `winget_dashboard/app_setup/templates.py`
+
+`winget_dashboard/dependencies.py` is responsible for per-request service dependency wiring.
 
 ### Project Structure
 
-```plaintext
+```text
 winget_agent_new/
-├── agent_builds/               # Server directory for .zip packages
-├── builder_helper/             # builder_helper.exe source code
-│   └── agent_src/              # Agent source (commands/, orchestrator.py, ...)
-├── setup/                      # Admin machine directory for installer building
-│   ├── SourceFiles/            # Inno Setup source files (.exe binaries)
-│   ├── Output/                 # Final installer output
-│   └── setup_script.iss        # Inno Setup script
-├── winget_dashboard/           # Main Flask application package
-│   ├── api/                    # API endpoints (/api/*)
-│   ├── repositories/           # Data access layer (Repository Pattern)
-│   ├── services/               # Business logic
-│   ├── static/                 # CSS, JS
-│   ├── templates/              # HTML templates (Jinja2)
-│   ├── help/                   # Built-in help documentation
-│   └── schema.sql              # SQLite schema
-├── tests/                      # Automated tests
-│   ├── repositories/           # Unit tests
-│   ├── api/                    # API tests
-│   ├── services/               # Service tests
-│   └── e2e/                    # End-to-end tests (Selenium)
-├── requirements.txt            # Server Python dependencies
-├── requirements-windows.txt    # Build dependencies (.exe)
-├── run.py                      # Server startup script
-└── .env                        # Server configuration (API keys, etc.)
+|-- agent_builds/
+|-- builder_helper/
+|   |-- agent_src/
+|   |-- builder_helper.py
+|   |-- error_definitions.json
+|   `-- dist/
+|-- help/
+|-- instance/
+|-- Output/
+|-- SourceFiles/
+|-- scripts/
+|-- screenshots/
+|-- tests/
+|-- winget_dashboard/
+|   |-- api/
+|   |-- app_setup/
+|   |-- repositories/
+|   |-- services/
+|   |-- static/
+|   |-- templates/
+|   |-- config.py
+|   |-- db.py
+|   |-- dependencies.py
+|   |-- scheduler.py
+|   |-- schema.sql
+|   `-- views.py
+|-- .env.example
+|-- docker-compose.yml
+|-- Dockerfile
+|-- requirements.txt
+|-- requirements-windows.txt
+|-- run.py
+|-- setup_script.iss
+`-- README.md
 ```
 
 ### Screenshots
 
 | View | Description |
 |------|-------------|
-| ![Main — tiles](screenshots/main.png) | Main page — tile view with sorting |
-| ![Main — list](screenshots/list.png) | Main page — table view with column sorting |
-| ![Computer detail](screenshots/computer.png) | Detailed computer view |
+| ![Main - tiles](screenshots/main.png) | Main page - tile view |
+| ![Main - list](screenshots/list.png) | Main page - table view |
+| ![Computer details](screenshots/computer.png) | Detailed computer view |
 | ![Computer settings](screenshots/computer_settings.png) | Computer settings |
-| ![Groups](screenshots/groups.png) | Computer group management |
-| ![Scheduler](screenshots/scheduler.png) | Scheduled recurring tasks |
-| ![History](screenshots/history.png) | Report history |
+| ![Groups](screenshots/groups.png) | Group management |
+| ![Scheduled tasks](screenshots/scheduler.png) | Scheduled tasks view |
+| ![Report history](screenshots/history.png) | Report history |
 | ![Settings](screenshots/settings.png) | Server settings |
 | ![Users](screenshots/users.png) | User management |
-| ![Help](screenshots/help.png) | Built-in help documentation |
+| ![Help](screenshots/help.png) | Built-in help |
 
-### Installation and Setup
+### Server Setup
 
-#### Step 1: Prerequisites
+Requirements:
+- Python 3.8+
+- Git
 
-* **Server (Linux/Windows):**
-    * Python 3.8+
-    * Git
-* **Admin Workstation (Windows):**
-    * Python 3.8+
-    * Git
-    * `pip install pyinstaller pywin32 requests` (preferably in a dedicated venv)
-    * **Inno Setup 6:** Download from [jrsoftware.org](https://jrsoftware.org/isinfo.php).
+Installation:
 
-#### Step 2: Server Setup
+```bash
+git clone <repository-address>
+cd winget_agent_new
+python -m venv venv
+```
 
-1.  **Clone the repository** on your server.
-    ```bash
-    git clone <repository-address>
-    cd winget_agent_new
-    ```
-2.  **Create and activate a virtual environment**
-    ```bash
-    python -m venv venv
-    # Windows: .\venv\Scripts\activate | Linux: source venv/bin/activate
-    ```
-3.  **Install dependencies**
-    ```bash
-    pip install -r requirements.txt
-    ```
-4.  **Create a `.env` file** and fill it in:
-    ```ini
-    SECRET_KEY=your_secret_session_key
-    API_KEY=your_secret_api_key_for_agents
-    RATELIMIT_ENABLED=true
-    NOTIFICATIONS_ENABLED=false
-    ```
-5.  **Initialize the database** (only once):
-    ```bash
-    flask --app run init-db
-    ```
-6.  **Run the production server:**
-    ```bash
-    waitress-serve --host=0.0.0.0 --port=5000 winget_dashboard:create_app
-    ```
+Activate virtualenv:
 
-#### Step 3: Building the Agent Package (Locally)
+```bash
+# Windows
+venv\Scripts\activate
 
-Perform this step **on your administrator workstation** (not the server).
+# Linux/macOS
+source venv/bin/activate
+```
 
-1.  **Clone the repository** onto your workstation.
-2.  **Build `builder_helper.exe`:**
-    ```bash
-    python -m venv venv-build
-    .\venv-build\Scripts\activate
-    pip install -r requirements-windows.txt
-    pyinstaller --onefile --name builder_helper builder_helper.py
-    ```
-3.  The finished `builder_helper.exe` will be in `dist/`. **Run it.** It listens on `http://127.0.0.1:61950`.
-4.  **Use the Generator in the Web Panel:**
-    * Open the Winget Dashboard panel **in a browser on the same machine**.
-    * Go to `Settings` → "Agent Generator".
-    * Enter the version, server address, and API key, then click "Generate Package".
-    * Download the personalized `.zip` package when finished.
+Install dependencies:
 
-#### Step 4: Uploading the `.zip` Package to the Server
+```bash
+pip install -r requirements.txt
+```
 
-1.  In the web panel under `Settings`, go to "Upload New Agent Package".
-2.  Select the `.zip` file and click "Upload and Set New Version".
-3.  The server stores the file and marks it as `_latest` for remote updates.
+Create config:
 
-#### Step 5: Creating the `setup.exe` Installer
+```bash
+# Windows
+copy .env.example .env
 
-1.  Unzip the package and copy `agent.exe`, `ui_helper.exe`, `updater.exe` to `setup/SourceFiles/`.
-2.  Open `setup/setup_script.iss` in **Inno Setup 6**.
-3.  Update the version number at the top and compile (F9).
-4.  The installer will be in `setup/Output/`.
+# Linux/macOS
+cp .env.example .env
+```
 
-#### Step 6: Deploying to Client Machines
+Minimal `.env`:
 
-1.  Deploy the `setup.exe` and **run it as an administrator**.
-    * Silent installation supported: `/VERYSILENT /SUPPRESSMSGBOXES`
-2.  The installer will clean up old versions, install the new service, and start it.
-3.  The computer will appear in the Winget Dashboard panel shortly.
+```ini
+SECRET_KEY=<your-session-key>
+API_KEY=<your-api-key>
+RATELIMIT_ENABLED=true
+NOTIFICATIONS_ENABLED=false
+```
 
-### Technology Stack
+Initialize the database:
 
-* **Backend:** Python 3, Flask, Waitress, SQLite
-* **Frontend:** HTML5, CSS3, JavaScript (vanilla)
-* **Agent:** Python 3, pywin32, requests
-* **Package Managers:** winget, chocolatey
-* **Build Tools:** PyInstaller, Inno Setup 6
-* **Testing:** pytest, Selenium (E2E)
+```bash
+flask --app run init-db
+```
+
+Run in development:
+
+```bash
+python run.py
+```
+
+Run in production:
+
+```bash
+waitress-serve --host=0.0.0.0 --port=5000 winget_dashboard:create_app
+```
+
+### Agent Package Build
+
+Agent package build is performed locally on a Windows admin workstation.
+
+```bash
+pip install -r requirements-windows.txt
+pyinstaller --onefile --name builder_helper builder_helper/builder_helper.py
+```
+
+After starting `builder_helper.exe`, the web panel generator can create a personalized `.zip` agent package.
+
+### Inno Setup Installer
+
+Current installer-related files live in the repo root:
+- `SourceFiles/`
+- `Output/`
+- `setup_script.iss`
+
+Typical flow:
+1. copy `agent.exe`, `ui_helper.exe`, `updater.exe` into `SourceFiles/`
+2. open `setup_script.iss` in Inno Setup
+3. update the version and compile the installer
+4. the result will appear in `Output/`
+
+### Tests
+
+```bash
+pytest
+pytest --cov=winget_dashboard --cov-report=html
+```
