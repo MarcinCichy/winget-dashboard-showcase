@@ -2,6 +2,13 @@
 
 Centralne zarzadzanie oprogramowaniem na komputerach Windows z uzyciem `winget` i `chocolatey`.
 
+## Dokumentacja aktywna
+
+- `CURRENT_STATE_AND_REFACTOR_PLAN.md` - glowny dokument roboczy: stan projektu, wykonane prace i dalsza kolejnosc refaktoru
+- `QUICK_START.md` - szybkie uruchomienie lokalne
+- `../help/` - dokumentacja dostepna z poziomu aplikacji i pozostawiona poza `docs/`
+- `archive/` - starsze checkpointy, plany, UAT i notatki sesyjne
+
 ## Spis tresci
 
 - [Opis](#opis)
@@ -65,7 +72,12 @@ winget_agent_new/
 |   |-- builder_helper.py         # Lokalny helper do budowy pakietu agenta
 |   |-- error_definitions.json
 |   `-- dist/                     # Wyniki lokalnego buildu helpera
-|-- help/                         # Dokumentacja pomocy
+|-- help/                         # Dokumentacja pomocy wykorzystywana przez aplikacje
+|-- docs/
+|   |-- archive/                 # Archiwum starszych notatek i planow
+|   |-- CURRENT_STATE_AND_REFACTOR_PLAN.md
+|   |-- QUICK_START.md
+|   `-- README.md
 |-- instance/                     # Runtime data, baza SQLite, logi
 |-- Output/                       # Wyniki instalatora Inno Setup
 |-- SourceFiles/                  # Wejscie do instalatora Inno Setup
@@ -91,24 +103,23 @@ winget_agent_new/
 |-- requirements.txt
 |-- requirements-windows.txt
 |-- run.py
-|-- setup_script.iss
-`-- README.md
+`-- setup_script.iss
 ```
 
 ## Zrzuty ekranu
 
 | Widok | Opis |
 |------|------|
-| ![Strona glowna - kafelki](screenshots/main.png) | Strona glowna - widok kafelkow |
-| ![Strona glowna - lista](screenshots/list.png) | Strona glowna - widok tabeli |
-| ![Szczegoly komputera](screenshots/computer.png) | Szczegolowy widok komputera |
-| ![Ustawienia komputera](screenshots/computer_settings.png) | Ustawienia i konfiguracja komputera |
-| ![Grupy](screenshots/groups.png) | Zarzadzanie grupami komputerow |
-| ![Zaplanowane zadania](screenshots/scheduler.png) | Widok scheduled tasks |
-| ![Historia raportow](screenshots/history.png) | Historia raportow |
-| ![Ustawienia](screenshots/settings.png) | Ustawienia serwera |
-| ![Uzytkownicy](screenshots/users.png) | Zarzadzanie uzytkownikami |
-| ![Pomoc](screenshots/help.png) | Wbudowana dokumentacja pomocy |
+| ![Strona glowna - kafelki](../screenshots/main.png) | Strona glowna - widok kafelkow |
+| ![Strona glowna - lista](../screenshots/list.png) | Strona glowna - widok tabeli |
+| ![Szczegoly komputera](../screenshots/computer.png) | Szczegolowy widok komputera |
+| ![Ustawienia komputera](../screenshots/computer_settings.png) | Ustawienia i konfiguracja komputera |
+| ![Grupy](../screenshots/groups.png) | Zarzadzanie grupami komputerow |
+| ![Zaplanowane zadania](../screenshots/scheduler.png) | Widok scheduled tasks |
+| ![Historia raportow](../screenshots/history.png) | Historia raportow |
+| ![Ustawienia](../screenshots/settings.png) | Ustawienia serwera |
+| ![Uzytkownicy](../screenshots/users.png) | Zarzadzanie uzytkownikami |
+| ![Pomoc](../screenshots/help.png) | Wbudowana dokumentacja pomocy |
 
 ## Uruchomienie serwera
 
@@ -286,6 +297,11 @@ winget_agent_new/
 |   |-- error_definitions.json
 |   `-- dist/
 |-- help/
+|-- docs/
+|   |-- archive/
+|   |-- CURRENT_STATE_AND_REFACTOR_PLAN.md
+|   |-- QUICK_START.md
+|   `-- README.md
 |-- instance/
 |-- Output/
 |-- SourceFiles/
@@ -311,24 +327,23 @@ winget_agent_new/
 |-- requirements.txt
 |-- requirements-windows.txt
 |-- run.py
-|-- setup_script.iss
-`-- README.md
+`-- setup_script.iss
 ```
 
 ### Screenshots
 
 | View | Description |
 |------|-------------|
-| ![Main - tiles](screenshots/main.png) | Main page - tile view |
-| ![Main - list](screenshots/list.png) | Main page - table view |
-| ![Computer details](screenshots/computer.png) | Detailed computer view |
-| ![Computer settings](screenshots/computer_settings.png) | Computer settings |
-| ![Groups](screenshots/groups.png) | Group management |
-| ![Scheduled tasks](screenshots/scheduler.png) | Scheduled tasks view |
-| ![Report history](screenshots/history.png) | Report history |
-| ![Settings](screenshots/settings.png) | Server settings |
-| ![Users](screenshots/users.png) | User management |
-| ![Help](screenshots/help.png) | Built-in help |
+| ![Main - tiles](../screenshots/main.png) | Main page - tile view |
+| ![Main - list](../screenshots/list.png) | Main page - table view |
+| ![Computer details](../screenshots/computer.png) | Detailed computer view |
+| ![Computer settings](../screenshots/computer_settings.png) | Computer settings |
+| ![Groups](../screenshots/groups.png) | Group management |
+| ![Scheduled tasks](../screenshots/scheduler.png) | Scheduled tasks view |
+| ![Report history](../screenshots/history.png) | Report history |
+| ![Settings](../screenshots/settings.png) | Server settings |
+| ![Users](../screenshots/users.png) | User management |
+| ![Help](../screenshots/help.png) | Built-in help |
 
 ### Server Setup
 
