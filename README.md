@@ -40,7 +40,7 @@ Projekt sklada sie z:
 - scheduled tasks
 - raporty i historia raportow
 - logi agenta i logi serwera
-- per-agent API keys
+- zdalnie zarzadzane per-agent API keys
 - zdalna aktualizacja agenta
 
 ## Architektura
@@ -206,6 +206,10 @@ pyinstaller --onefile --name builder_helper builder_helper/builder_helper.py
 ```
 
 Po uruchomieniu `builder_helper.exe` generator w panelu WWW moze przygotowac spersonalizowany pakiet `.zip` agenta.
+
+W polu `Klucz API` generatora nalezy wpisac globalny `API_KEY` z konfiguracji serwera (`.env` albo Docker env). Ten klucz nie jest juz renderowany w HTML panelu; operator musi wkleić go recznie z konfiguracji wdrozenia.
+
+Klucze per-agent nie sa wpisywane do generatora. Po wgraniu nowej paczki i zaktualizowaniu agentow Dashboard zarzadza nimi zdalnie przez zadania `set_agent_api_key` i `use_global_api_key`. Agent zapisuje lokalny override w `C:\ProgramData\WingetAgent\agent_runtime_config.json` dopiero po potwierdzonym odeslaniu wyniku zadania.
 
 ## Instalator Inno Setup
 
