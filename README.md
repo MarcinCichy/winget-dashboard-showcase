@@ -118,7 +118,8 @@ winget_agent_new/
 
 | Widok | Opis |
 |------|------|
-| ![Strona glowna - kafelki](../screenshots/main.png) | Strona glowna - widok kafelkow |
+| ![Strona glowna - kafelki](../screenshots/main.png) | Strona glowna - widok kafelkow |codex
+
 | ![Strona glowna - lista](../screenshots/list.png) | Strona glowna - widok tabeli |
 | ![Szczegoly komputera](../screenshots/computer.png) | Szczegolowy widok komputera |
 | ![Ustawienia komputera](../screenshots/computer_settings.png) | Ustawienia i konfiguracja komputera |
@@ -239,11 +240,20 @@ Budowa `builder_helper.exe`:
 pyinstaller --onefile --name builder_helper builder_helper/builder_helper.py
 ```
 
-Po uruchomieniu `builder_helper.exe` generator w panelu WWW moze przygotowac spersonalizowany pakiet `.zip` agenta.
+Po zbudowaniu helpera wykonaj jednorazowo lokalnie:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\builder_helper\register_builder_protocol.ps1
+```
+
+Generator w panelu WWW:
+- pobiera globalny `API_KEY` dynamicznie po sesji admina,
+- uruchamia `builder_helper.exe` on-demand przez local protocol handler,
+- buduje ZIP i po pobraniu moze zamknac helper automatycznie.
 
 Domyslny i bezpieczny model pracy:
 - serwer nie musi kompilowac agenta po stronie runtime
-- operator wpisuje globalny `API_KEY` recznie podczas budowania paczki
+- operator nie wpisuje globalnego `API_KEY` recznie do formularza
 - dokumentacja i UI nie powinny ujawniac realnych kluczy ani adresow wdrozeniowych
 
 Klucze per-agent nie sa wpisywane do generatora. Po wgraniu nowej paczki i zaktualizowaniu agentow Dashboard zarzadza nimi zdalnie przez zadania `set_agent_api_key` i `use_global_api_key`. Agent zapisuje lokalny override dopiero po potwierdzonym odeslaniu wyniku zadania.
@@ -476,7 +486,16 @@ pip install -r requirements-windows.txt
 pyinstaller --onefile --name builder_helper builder_helper/builder_helper.py
 ```
 
-After starting `builder_helper.exe`, the web panel generator can create a personalized `.zip` agent package.
+After building the helper, register the local protocol handler once:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\builder_helper\register_builder_protocol.ps1
+```
+
+The web panel generator then:
+- fetches the global `API_KEY` dynamically for the logged-in admin session,
+- starts `builder_helper.exe` on demand via the local protocol handler,
+- builds the ZIP package and can shut the helper down after download.
 
 ### Inno Setup Installer
 
