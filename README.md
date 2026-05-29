@@ -23,6 +23,8 @@ Główny opis repozytorium, architektury i podstawowego uruchomienia znajduje si
   - główny dokument roboczy: stan projektu, wykonane prace, dalsza kolejność refaktoru
 - [QUICK_START.md](./QUICK_START.md)
   - szybkie uruchomienie lokalne
+- [DEPLOY_FROM_WINDOWS.md](./DEPLOY_FROM_WINDOWS.md)
+  - deploy z Windows przez SCP/SSH bez gita na serwerze
 - [../help/](../help/)
   - dokumentacja użytkowa widoczna także z poziomu aplikacji
 
