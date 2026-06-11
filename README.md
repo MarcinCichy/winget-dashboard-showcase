@@ -25,6 +25,8 @@ Główny opis repozytorium, architektury i podstawowego uruchomienia znajduje si
   - szybkie uruchomienie lokalne
 - [DEPLOY_FROM_WINDOWS.md](./DEPLOY_FROM_WINDOWS.md)
   - deploy z Windows przez SCP/SSH bez gita na serwerze
+- [UPDATE_CONFIDENCE_MODEL.md](./UPDATE_CONFIDENCE_MODEL.md)
+  - model rozdzielenia statusu wykonania aktualizacji od potwierdzenia jej efektu
 - [../help/](../help/)
   - dokumentacja użytkowa widoczna także z poziomu aplikacji
 
